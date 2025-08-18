@@ -1,74 +1,61 @@
-// ----- mini-redux.js (a tiny Redux-like store) -----
-function createStore(reducer, preloadedState) {
-  let state = preloadedState;
-  const listeners = new Set();
+import { createStore, combineReducers } from "redux";
 
-  function getState() {
-    return state;
-  }
+// -------------------- Action Types --------------------
+const LOGIN = "LOGIN";
+const LOGOUT = "LOGOUT";
+const ADD_TO_CART = "ADD_TO_CART";
 
-  function dispatch(action) {
-    if (!action || typeof action.type === "undefined") {
-      throw new Error("Action must be an object with a 'type' field");
-    }
-    state = reducer(state, action);
-    listeners.forEach((l) => l());
-    return action;
-  }
+// -------------------- Action Creators --------------------
+const login = () => ({ type: LOGIN });
+const logout = () => ({ type: LOGOUT });
+const addToCart = (item) => ({ type: ADD_TO_CART, payload: item });
 
-  function subscribe(listener) {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
-  }
+// -------------------- User Reducer --------------------
+const initialUserState = { loggedIn: false };
 
-  // init
-  dispatch({ type: "@@INIT" });
-  return { getState, dispatch, subscribe };
-}
-
-// ----- reducer.js -----
-const initialState = { count: 0, history: [] };
-
-function counterReducer(state = initialState, action) {
+function userReducer(state = initialUserState, action) {
   switch (action.type) {
-    case "counter/increment":
-      return { 
-        ...state, 
-        count: state.count + 1, 
-        history: [...state.history, "inc"] 
-      };
-    case "counter/decrement":
-      return { 
-        ...state, 
-        count: state.count - 1, 
-        history: [...state.history, "dec"] 
-      };
-    case "counter/addBy":
-      return { 
-        ...state, 
-        count: state.count + (action.payload ?? 0),
-        history: [...state.history, `+${action.payload ?? 0}`]
-      };
+    case LOGIN:
+      return { ...state, loggedIn: true };
+    case LOGOUT:
+      return { ...state, loggedIn: false };
     default:
       return state;
   }
 }
 
-// ----- index.js (wire it up) -----
-const store = createStore(counterReducer);
+// -------------------- Cart Reducer --------------------
+const initialCartState = [];
 
-const unsubscribe = store.subscribe(() => {
-  console.log("State changed:", store.getState());
+function cartReducer(state = initialCartState, action) {
+  switch (action.type) {
+    case ADD_TO_CART:
+      return [...state, action.payload];
+    default:
+      return state;
+  }
+}
+
+// -------------------- Combine Reducers --------------------
+const rootReducer = combineReducers({
+  user: userReducer,
+  cart: cartReducer,
 });
 
-// Dispatch a few actions
-store.dispatch({ type: "counter/increment" });
-store.dispatch({ type: "counter/increment" });
-store.dispatch({ type: "counter/decrement" });
-store.dispatch({ type: "counter/addBy", payload: 5 });
+// -------------------- Create Store --------------------
+const store = createStore(rootReducer);
 
-// Stop listening (optional)
-// unsubscribe();
+// -------------------- State Logs --------------------
+console.log("Initial State:", store.getState());
 
-// Final state
-console.log("Final:", store.getState());
+store.dispatch(login());
+console.log("After LOGIN:", store.getState());
+
+store.dispatch(addToCart({ id: 1, name: "iPhone" }));
+console.log("After ADD_TO_CART:", store.getState());
+
+store.dispatch(addToCart({ id: 2, name: "Samsung Galaxy" }));
+console.log("After ADD_TO_CART second item:", store.getState());
+
+store.dispatch(logout());
+console.log("After LOGOUT:", store.getState());
